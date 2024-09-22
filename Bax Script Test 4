@@ -1,0 +1,38 @@
+while true do wait(1)
+
+print("working")
+
+-- Get the Players service
+local Players = game:GetService("Players")
+
+-- Function to highlight a player's character
+local function highlightPlayer(player)
+    -- Wait for the player's character to spawn
+    player.CharacterAdded:Connect(function(character)
+        -- Create a new Highlight instance
+        local highlight = Instance.new("Highlight")
+        highlight.Adornee = character -- Apply the highlight to the character model
+        highlight.FillColor = Color3.new(0, 1, 0) -- Green fill color
+        highlight.OutlineColor = Color3.new(1, 0, 0) -- Red outline color
+        highlight.Parent = character -- Parent the highlight to the character model
+    end)
+
+    -- If the character already exists, highlight it immediately
+    if player.Character then
+        local highlight = Instance.new("Highlight")
+        highlight.Adornee = player.Character
+        highlight.FillColor = Color3.new(0, 1, 0) -- Green fill color
+        highlight.OutlineColor = Color3.new(1, 0, 0) -- Red outline color
+        highlight.Parent = player.Character
+    end
+end
+
+-- Loop through all players currently in the game and highlight them
+for _, player in ipairs(Players:GetPlayers()) do
+    highlightPlayer(player)
+end
+
+-- Highlight new players when they join the game
+Players.PlayerAdded:Connect(function(player)
+    highlightPlayer(player)
+end)
