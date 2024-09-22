@@ -1,38 +1,131 @@
-while true do wait(1)
+local PabloLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/BatuKvi123/PabloLibV3/main/PabloLibV3"))()
 
-print("working")
+local window = PabloLib:Create(
+    "Bax Hub", -- Name of the GUI
+    "Enabled", -- Draggable ("Enabled" to allow dragging)
+    "c" -- Keybind to open/close the GUI
+)
 
--- Get the Players service
 local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = game:GetService("Workspace").CurrentCamera
+local RunService = game:GetService("RunService")
 
--- Function to highlight a player's character
+local tab1 = window:CreateTab("ESP") -- Create a new tab for ESP
+
+local highlightingActive = false
+
+-- Highlighting players function
 local function highlightPlayer(player)
-    -- Wait for the player's character to spawn
+    if player == LocalPlayer then return end -- Skip local player
+
+    local function createHighlight(character)
+        if not character:FindFirstChildOfClass("Highlight") then
+            local highlight = Instance.new("Highlight")
+            highlight.Adornee = character
+            highlight.FillColor = Color3.new(0, 1, 0) -- Green fill color
+            highlight.OutlineColor = Color3.new(1, 0, 0) -- Red outline color
+            highlight.Parent = character
+        end
+    end
+
     player.CharacterAdded:Connect(function(character)
-        -- Create a new Highlight instance
-        local highlight = Instance.new("Highlight")
-        highlight.Adornee = character -- Apply the highlight to the character model
-        highlight.FillColor = Color3.new(0, 1, 0) -- Green fill color
-        highlight.OutlineColor = Color3.new(1, 0, 0) -- Red outline color
-        highlight.Parent = character -- Parent the highlight to the character model
+        if highlightingActive then
+            createHighlight(character)
+        end
     end)
 
-    -- If the character already exists, highlight it immediately
-    if player.Character then
-        local highlight = Instance.new("Highlight")
-        highlight.Adornee = player.Character
-        highlight.FillColor = Color3.new(0, 1, 0) -- Green fill color
-        highlight.OutlineColor = Color3.new(1, 0, 0) -- Red outline color
-        highlight.Parent = player.Character
+    if player.Character and highlightingActive then
+        createHighlight(player.Character)
     end
 end
 
--- Loop through all players currently in the game and highlight them
-for _, player in ipairs(Players:GetPlayers()) do
-    highlightPlayer(player)
+-- Function to update highlights for all players
+local function updateHighlights()
+    for _, player in ipairs(Players:GetPlayers()) do
+        highlightPlayer(player)
+    end
 end
+
+-- Button to toggle highlighting
+tab1:CreateButton("Toggle Highlights", function()
+    highlightingActive = not highlightingActive
+    print(highlightingActive and "Highlights Activated" or "Highlights Deactivated")
+
+    if highlightingActive then
+        coroutine.wrap(function()
+            while highlightingActive do
+                updateHighlights()
+                print("Hi") -- This will print "Hi" every time the loop executes
+                wait(1)
+            end
+        end)()
+    end
+end)
 
 -- Highlight new players when they join the game
 Players.PlayerAdded:Connect(function(player)
     highlightPlayer(player)
+end)
+
+-- ESP Box functionality (initially inactive)
+local ESPBoxes = {}
+
+local function CreateBox()
+    local box = Drawing.new("Square")
+    box.Color = Color3.new(0, 1, 0) -- Green color
+    box.Thickness = 2
+    box.Filled = false
+    return box
+end
+
+local function UpdateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local character = player.Character
+            local hrp = character:FindFirstChild("HumanoidRootPart")
+            local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+
+            if onScreen then
+                local box = ESPBoxes[player] or CreateBox()
+                ESPBoxes[player] = box
+
+                local size = Vector2.new(850 / screenPos.Z, 1200 / screenPos.Z)
+                box.Size = size
+                box.Position = Vector2.new(screenPos.X - size.X / 2, screenPos.Y - size.Y / 2)
+                box.Visible = true
+            else
+                if ESPBoxes[player] then
+                    ESPBoxes[player].Visible = false
+                end
+            end
+        end
+    end
+end
+
+-- Clean up when players leave
+Players.PlayerRemoving:Connect(function(player)
+    if ESPBoxes[player] then
+        ESPBoxes[player]:Remove()
+        ESPBoxes[player] = nil
+    end
+end)
+
+-- Run ESP on render step
+local espActive = false
+
+tab1:CreateButton("Activate ESP Box", function()
+    espActive = true
+    print("ESP Box Activated")
+    RunService.RenderStepped:Connect(UpdateESP)
+end)
+
+-- Create a toggle for enabling/disabling features
+tab1:CreateToggle("Toggle Highlights", function(state)
+    highlightingActive = state
+    if state then
+        print("Highlights Enabled!")
+    else
+        print("Highlights Disabled!")
+    end
 end)
